@@ -1,56 +1,90 @@
+var operatorSymbols = ['+', '-', '*'];
+var rounds;
+var operators;
+var order = 0;
 /**
  * @param {string} input
  * @return {number[]}
  */
 var diffWaysToCompute = function(input) {    
     var all = input.split(/\b/);
-    if(all.length === 2) return myAtoi(input);
-    var mid = addParenthesesAndCalcIt(all, all);
-    var r = mid.r;
-    var s = mid.s;
+    if(all.length < 3) return [Number(input)];
+    operators = findAllOperators(all);
+    order = 0;
+    generateRounds(operators.length);
+    var next;
     var res = {};
-    for (var i = r.length - 1; i >= 0; i--) {
-        res[s[i]] = r[i];
+    while (next = nextOrder()) {
+        var mid = addParenthesesAndCalcIt(next, all);
+        res[mid.s] = mid.r;
     }
     var returnValue = [];
-    for(var k in res) returnValue.push(res[k]);
+    for(var k in res) {
+        returnValue.push(res[k]);
+    }
     return returnValue;
 };
 
-var operator = ['+', '-', '*'];
 function findAllOperators(s) {
     var operators = [];
     for (var i = 0; i < s.length; i++) {
         var char = s[i];
-        if(operator.indexOf(char) > -1) operators.push(i); 
+        if(operatorSymbols.indexOf(char) > -1) operators.push(i); 
     }
     return operators;
 }
 
-function addParenthesesAndCalcIt(s, res) {
-    var current = findAllOperators(s);
-    if(s.length < 2) return {s: s, r: res};
-    var ss = [];
-    var rs = [];
-    for (var i = current.length - 1; i > -1; i--) {
-        var cp = current[i];
+
+function nextOrder() {
+    var ordered = [];
+    for (var i = 0; i < rounds.length; i++) {
+        ordered.push(i);
+    }
+    var orderList = [];
+    var remainder = order;
+    for (i = 0; i < rounds.length - 1; i++) {
+        var cr = rounds[i];
+        var quotient = Math.floor(remainder / cr);
+        remainder = remainder % cr;
+        orderList.push(ordered[quotient]);
+        ordered.splice(quotient, 1);
+    }
+    orderList.push(ordered[0]);
+    if(order + 1 > rounds[0]*rounds.length) return null;
+    order++;
+    return orderList;
+}
+
+function generateRounds(n) {
+    rounds = [1];
+    for (var i = 1; i < n; i++) {
+        rounds.unshift(rounds[0] * i);   
+    }
+}
+
+function addParenthesesAndCalcIt(ol, all) {
+    var current = operators;
+    var positions = ol.map(function(e) {
+        return current[e];
+    });
+    var s = all.slice();
+    var res = all.slice();
+    for (var i = 0; i < positions.length; i++) {
+        var cp = positions[i];
 
         var currentTargetExpression = '(' + s.slice(cp - 1, cp + 2).join('') + ')';
-        var cs = s.slice();
-        cs.splice(cp, 2);
-        cs[cp - 1] = currentTargetExpression;
+        s.splice(cp, 2);
+        s[cp - 1] = currentTargetExpression;
 
         var currentResult = calc(res.slice(cp - 1, cp + 2));
-        var cr = res.slice();
-        cr.splice(cp, 2);
-        cr[cp - 1] = currentResult;
+        res.splice(cp, 2);
+        res[cp - 1] = currentResult;
 
-        var r = addParenthesesAndCalcIt(cs, cr);
-
-        ss = ss.concat(r.s);
-        rs = rs.concat(r.r);
+        positions = positions.map(function(e) {
+            return (e > cp) ? e - 2 : e;
+        });
     }
-    return {s: ss, r: rs};
+    return {s: s[0], r: res[0]};
 }
 
 function calc(e) {
